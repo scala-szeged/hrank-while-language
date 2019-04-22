@@ -4,9 +4,10 @@ import scala.util.parsing.combinator.JavaTokenParsers
 
 object WhileLanguage {
 
+  // More loop executions consumes more RAM
   var program: String =
     """fact := 1 ;
-      |val := 10000 ;
+      |val := 1000;
       |cur := val ;
       |mod := 1000000007 ;
       |
@@ -24,11 +25,10 @@ object WhileLanguage {
 
   def main(args: Array[String]): Unit = {
 
-    val bytes = new Array[Byte](1024000)
-    val len = System.in.read(bytes)
-    program = bytes.take(len).map(_.toChar).mkString
+    // val bytes = new Array[Byte](1024000)
+    // val len = System.in.read(bytes)
+    // program = bytes.take(len).map(_.toChar).mkString
     println(program)
-
 
     println(wl.parse(program).toList.sorted.map { case (k, v) => s"$k $v" }.mkString("\n"))
   }
@@ -45,9 +45,9 @@ class WL extends JavaTokenParsers {
   def lines: Parser[List[Transition]] = repsep(varInit | while_ | ifElse | ifThen, ";")
 
   def while_ : Parser[Transition] =
-    "while" ~> "(" ~> "[^)]+".r ~ ")" ~ "do" ~ "{" ~ lines ~ "}" ^^ {
+    ("while" ~> "(" ~> "[^)]+".r <~ ")" ~ "do" ~ "{") ~ lines <~ "}" ^^ {
 
-      case bool ~ _ ~ _ ~ _ ~ parsedLines ~ _ =>
+      case bool ~ parsedLines =>
 
         variables => while_loop(variables, bool, parsedLines)
     }
@@ -67,13 +67,12 @@ class WL extends JavaTokenParsers {
   }
 
   def ifElse: Parser[Transition] =
-    "if" ~> "(" ~> "[^)]+".r ~ ")" ~ "then" ~
-      "{" ~ lines ~ "}" ~
-      "else" ~
-      "{" ~ lines ~ "}" ^^ {
+    ("if" ~> "(" ~> "[^)]+".r <~ ")" <~ "then" <~
+      "{") ~ (lines <~ "}" <~
+      "else" <~
+      "{") ~ (lines <~ "}") ^^ {
 
-      case bool ~ _ ~ _ ~ _ ~ parsedIfLines ~ _ ~
-        _ ~ _ ~ parsedElseLines ~ _ =>
+      case bool ~ parsedIfLines ~ parsedElseLines =>
 
         variables =>
           if (parseBool(bool, variables)) {
@@ -88,10 +87,10 @@ class WL extends JavaTokenParsers {
     }
 
   def ifThen: Parser[Transition] =
-    "if" ~> "(" ~> "[^)]+".r ~ ")" ~ "then" ~
-      "{" ~ lines ~ "}" ^^ {
+    ("if" ~> "(" ~> "[^)]+".r <~ ")" <~ "then" <~
+      "{") ~ (lines <~ "}") ^^ {
 
-      case bool ~ _ ~ _ ~ _ ~ parsedLines ~ _ =>
+      case bool ~ parsedLines =>
 
         variables =>
           if (parseBool(bool, variables)) {
@@ -127,7 +126,7 @@ class WL extends JavaTokenParsers {
 
   def varRef: Parser[State => Long] = ident ^^ (v => { variables => variables(v) })
 
-  def number: Parser[State => Long] = "\\d+".r ^^ (num => { _ => num.toInt })
+  def number: Parser[State => Long] = "\\d+".r ^^ (num => { _ => num.toLong })
 
   def factor: Parser[State => Long] = varRef | number | "(" ~> expr <~ ")"
 
