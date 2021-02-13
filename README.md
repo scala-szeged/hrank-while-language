@@ -4,7 +4,7 @@ According to the original implementation task it can handle
 nested if, nested while, variable, integer and boolean expressions.
 
 I implemented array handling, too which is not needed for the task on hackerrank.com. Please see the algorithm below which demonstrates it.
-```go
+```ruby
 a := [4,3,2,1];
 j:=0;
 while(j<3)
