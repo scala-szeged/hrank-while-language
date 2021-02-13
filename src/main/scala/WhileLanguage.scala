@@ -1,36 +1,66 @@
-package functional.programming.InterpreterAndCompilers
-
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.util.parsing.combinator.JavaTokenParsers
 
 object WhileLanguage {
 
-  // More loop executions consumes more RAM
-  var program: String =
+  var fact: String =
     """fact := 1 ;
-      |val := 1000;
+      |val := 3;
       |cur := val ;
-      |mod := 1000000007 ;
       |
       |while ( cur > 1 )
       |  do
       |   {
       |      fact := fact * cur ;
-      |      fact := fact - fact / mod * mod ;
       |      cur := cur - 1
-      |   } ;
-      |
-      |cur := 0""".stripMargin
+      |   }
+      |""".stripMargin
 
+  var fib: String =
+    """a := 1;
+      |b := 1;
+      |n := 6;
+      |
+      |while ( n > 1 )
+      |  do
+      |   {
+      |      fib := a + b ;
+      |      a := b;
+      |      b := fib;
+      |      n := n - 1
+      |   }
+      |""".stripMargin
+
+  var sort: String =
+    """a := [4,3,2,1];
+      |j:=0;
+      |while(j<3)
+      |do
+      |{
+      |   j:=j+1;
+      |   i:=0;
+      |   while(i<3)
+      |   do
+      |   {
+      |     i:=i+1;
+      |     if(a[i-1] > a[i]) then
+      |     {
+      |       t:=a[i-1];
+      |       a[i-1]:=a[i];
+      |       a[i]:=t
+      |     }
+      |   }
+      |}
+      |""".stripMargin
+
+  val program: String = sort
   val wl = new WL()
 
   def main(args: Array[String]): Unit = {
-
-    // val bytes = new Array[Byte](1024000)
-    // val len = System.in.read(bytes)
-    // program = bytes.take(len).map(_.toChar).mkString
     println(program)
 
-    println(wl.parse(program).toList.sorted.map { case (k, v) => s"$k $v" }.mkString("\n"))
+    println(wl.parse(program).map { case (k, v) => s"$k $v" }.mkString("\n"))
   }
 
 }
@@ -38,11 +68,40 @@ object WhileLanguage {
 //noinspection RedundantBlock
 class WL extends JavaTokenParsers {
 
-  type State = Map[String, Long]
+  type State = collection.SortedMap[String, Store]
   type Transition = State => State
 
+  class Store(store: mutable.ArrayBuffer[Long], isArray: Boolean = false, index: Int) {
+    def value: Long = {
+      if (isArray)
+        throw new UnsupportedOperationException(s"$this is an array, value should not be called. " +
+          s"Call element with an index which is in the range of (0,${store.size - 1})")
+      store(index)
+    }
 
-  def lines: Parser[List[Transition]] = repsep(varInit | while_ | ifElse | ifThen, ";")
+    def element(state: State, idxExpr: State => Store): Long = store(idxExpr(state).value.toInt)
+
+    def setElement(variables: State, idxExpr: State => Store, expr: State => Store): Unit = {
+        val v = expr(variables).value
+        store(idxExpr(variables).value.toInt) = v
+    }
+
+    override def toString: String = if (isArray) {
+      store.mkString("[", ",", "]")
+    } else {
+      String.valueOf(value)
+    }
+  }
+
+  object Store {
+    implicit def apply(value: Long): Store = {
+      val arr = new ArrayBuffer[Long](1)
+      arr += value
+      new Store(arr, false, 0)
+    }
+  }
+
+  def lines: Parser[List[Transition]] = repsep(varInit | arrayVarInit | arrayElementInit | while_ | ifElse | ifThen, ";")
 
   def while_ : Parser[Transition] =
     ("while" ~> "(" ~> "[^)]+".r <~ ")" ~ "do" ~ "{") ~ lines <~ "}" ^^ {
@@ -112,11 +171,11 @@ class WL extends JavaTokenParsers {
   def boolTerm: Parser[State => Boolean] = gt | lt
 
   def gt: Parser[State => Boolean] = expr ~ ">" ~ expr ^^ {
-    case a ~ ">" ~ b => { variables => a(variables) > b(variables) }
+    case a ~ ">" ~ b => { variables => a(variables).value > b(variables).value }
   }
 
   def lt: Parser[State => Boolean] = expr ~ "<" ~ expr ^^ {
-    case a ~ "<" ~ b => { variables => a(variables) < b(variables) }
+    case a ~ "<" ~ b => { variables => a(variables).value < b(variables).value }
   }
 
   def varInit: Parser[Transition] = ident ~ ":=" ~ expr ^^ {
@@ -124,30 +183,58 @@ class WL extends JavaTokenParsers {
       variables => variables.updated(v, expr(variables))
   }
 
-  def varRef: Parser[State => Long] = ident ^^ (v => { variables => variables(v) })
+  def arrayVarInit: Parser[Transition] = ident ~ ":=" ~ arrayLiteral ^^ {
+    case v ~ _ ~ list =>
+      variables =>
+        val buff = list.foldLeft(mutable.ArrayBuffer[Long]()) {
+          case (b, expr) =>
+            b += expr(variables).value
+            b
+        }
+        val store = new Store(buff, true, -1)
+        variables.updated(v, store)
+  }
 
-  def number: Parser[State => Long] = "\\d+".r ^^ (num => { _ => num.toLong })
+  def varRef: Parser[State => Store] = ident ^^ (v => { variables => variables(v) })
 
-  def factor: Parser[State => Long] = varRef | number | "(" ~> expr <~ ")"
+  def arrayElementInit: Parser[Transition] = ident ~ "[" ~ expr ~ "]" ~ ":=" ~ expr ^^ {
+    case v ~ _ ~ idxExpr ~ _ ~ _ ~ expr => {
+      variables =>
+        variables(v).setElement(variables, idxExpr,expr)
+        variables
+    }
+  }
 
-  def term: Parser[State => Long] = factor ~ rep("*" ~ factor | "/" ~ factor) ^^ {
+  def arrayElementRef: Parser[State => Store] = ident ~ "[" ~ expr <~ "]" ^^ {
+    case v ~ _ ~ idxExpr => {
+      variables => variables(v).element(variables, idxExpr)
+    }
+  }
+
+  def arrayLiteral: Parser[List[State => Store]] = "[" ~> repsep(expr, ",") <~ "]"
+
+  def number: Parser[State => Store] = "\\d+".r ^^ (num => { _ => num.toLong })
+
+  def factor: Parser[State => Store] = arrayElementRef | varRef | number | "(" ~> expr <~ ")"
+
+  def term: Parser[State => Store] = factor ~ rep("*" ~ factor | "/" ~ factor) ^^ {
     case number ~ list => (number /: list) {
-      case (x, "*" ~ y) => { variables => x(variables) * y(variables) }
-      case (x, "/" ~ y) => { variables => x(variables) / y(variables) }
+      case (x, "*" ~ y) => { variables => x(variables).value * y(variables).value }
+      case (x, "/" ~ y) => { variables => x(variables).value / y(variables).value }
     }
   }
 
-  def expr: Parser[State => Long] = term ~ rep("+" ~ term | "-" ~ term) ^^ {
+  def expr: Parser[State => Store] = term ~ rep("+" ~ term | "-" ~ term) ^^ {
     case number ~ list => list.foldLeft(number) { // same as before, using alternate name for /:
-      case (x, "+" ~ y) => { variables => x(variables) + y(variables) }
-      case (x, "-" ~ y) => { variables => x(variables) - y(variables) }
+      case (x, "+" ~ y) => { variables => x(variables).value + y(variables).value }
+      case (x, "-" ~ y) => { variables => x(variables).value - y(variables).value }
     }
   }
 
 
-  def parse(source: String): Map[String, Long] = parseAll(lines, source) match {
+  def parse(source: String): State = parseAll(lines, source) match {
     case Success(expression, _) =>
-      expression.foldLeft(Map(): State) {
+      expression.foldLeft(collection.SortedMap(): State) {
         case (vs, t) => t(vs)
       }
 
