@@ -71,7 +71,7 @@ class WL extends JavaTokenParsers {
   type State = collection.SortedMap[String, Store]
   type Transition = State => State
 
-  class Store(store: mutable.ArrayBuffer[Long], isArray: Boolean = false, index: Int) {
+  class Store(store: mutable.ArrayBuffer[Long], isArray: Boolean, index: Int) {
     def value: Long = {
       if (isArray)
         throw new UnsupportedOperationException(s"$this is an array, value should not be called. " +
@@ -97,7 +97,7 @@ class WL extends JavaTokenParsers {
     implicit def apply(value: Long): Store = {
       val arr = new ArrayBuffer[Long](1)
       arr += value
-      new Store(arr, false, 0)
+      new Store(arr, isArray = false, index = 0)
     }
   }
 
@@ -191,7 +191,7 @@ class WL extends JavaTokenParsers {
             b += expr(variables).value
             b
         }
-        val store = new Store(buff, true, -1)
+        val store = new Store(buff, isArray = true, index= -1)
         variables.updated(v, store)
   }
 

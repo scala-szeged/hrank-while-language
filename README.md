@@ -1,9 +1,11 @@
 # The While language from hackerrank.com
 
-According to the original implementation task it can handle 
-nested if, nested while, variable, integer and boolean expressions.
+According to the original implementation task I made an interpreter which can handle 
+nested if, nested while, variables, integer and boolean expressions.
 
-I implemented array handling, too which is not needed for the task on hackerrank.com. Please see the algorithm below which demonstrates it.
+I implemented array handling, too which is an additional feature. It was not needed 
+for the succesful execution of the original task on hackerrank.com. 
+Please see the algorithm below which demonstrates array handling.
 ```go
 a := [4,3,2,1];
 j:=0;
