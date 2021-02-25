@@ -5,7 +5,7 @@ import scala.util.parsing.combinator.JavaTokenParsers
 object WhileLanguage {
 
   // More loop executions consumes more RAM
-  var program: String =
+  var fact: String =
     """fact := 1 ;
       |val := 1000;
       |cur := val ;
@@ -21,6 +21,22 @@ object WhileLanguage {
       |
       |cur := 0""".stripMargin
 
+  var nestedProgram: String =
+    """x := 2 ;
+      |y := 3;
+      |prod:=1;
+      |
+      |while ( x > 1 ) do
+      |{
+      |   while ( y > 1 ) do
+      |   {
+      |      prod := prod * x * y ;
+      |      y := y - 1
+      |   } ;
+      |   x := x - 1
+      |}
+      |""".stripMargin
+
   val wl = new WL()
 
   def main(args: Array[String]): Unit = {
@@ -28,9 +44,9 @@ object WhileLanguage {
     // val bytes = new Array[Byte](1024000)
     // val len = System.in.read(bytes)
     // program = bytes.take(len).map(_.toChar).mkString
-    println(program)
+    println(nestedProgram)
 
-    println(wl.parse(program).toList.sorted.map { case (k, v) => s"$k $v" }.mkString("\n"))
+    println(wl.run(nestedProgram).toList.sorted.map { case (k, v) => s"$k $v" }.mkString("\n"))
   }
 
 }
@@ -145,7 +161,7 @@ class WL extends JavaTokenParsers {
   }
 
 
-  def parse(source: String): Map[String, Long] = parseAll(lines, source) match {
+  def run(source: String): Map[String, Long] = parseAll(lines, source) match {
     case Success(expression, _) =>
       expression.foldLeft(Map(): State) {
         case (vs, t) => t(vs)
