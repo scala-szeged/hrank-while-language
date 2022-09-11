@@ -1,0 +1,10 @@
+fact := 1 ;
+val := 3;
+cur := val ;
+
+while ( cur > 1 )
+  do
+   {
+      fact := fact * cur ;
+      cur := cur - 1
+   }
