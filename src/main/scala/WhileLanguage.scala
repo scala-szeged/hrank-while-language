@@ -159,14 +159,14 @@ class WhileLanguageParser extends JavaTokenParsers {
   def factor: Parser[State => Value] = arrayElementRef | varRef | number | "(" ~> expr <~ ")"
 
   def term: Parser[State => Value] = factor ~ rep("*" ~ factor | "/" ~ factor) ^^ {
-    case number ~ list => (number /: list) {
+    case number ~ list => list.foldLeft(number) {
       case (x, "*" ~ y) => { variables => x(variables).value * y(variables).value }
       case (x, "/" ~ y) => { variables => x(variables).value / y(variables).value }
     }
   }
 
   def expr: Parser[State => Value] = term ~ rep("+" ~ term | "-" ~ term) ^^ {
-    case number ~ list => list.foldLeft(number) { // same as before, using alternate name for /:
+    case number ~ list => list.foldLeft(number) {
       case (x, "+" ~ y) => { variables => x(variables).value + y(variables).value }
       case (x, "-" ~ y) => { variables => x(variables).value - y(variables).value }
     }
