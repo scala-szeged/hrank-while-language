@@ -42,8 +42,3 @@ It can execute the kind of algorithms you see above, which is a sort algorithm.
 Using the link below you can see a fibonacci and a factorial algorithm, too.
 The interpreter executes the aformentioned language. Please see it
 here: [src/main/scala/WhileLanguage.scala](https://github.com/scala-szeged/hrank-while-language/blob/master/src/main/scala/WhileLanguage.scala)
-
-
-## I use the following convention for my git commit messages
-
-Please see https://www.conventionalcommits.org
