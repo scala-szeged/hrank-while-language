@@ -40,5 +40,5 @@ t 2
 
 It can execute the kind of algorithms you see above, which is a sort algorithm. 
 Using the link below you can see a fibonacci and a factorial algorithm, too.
-The interpreter executes the aformentioned language. Please see it
-here: [src/main/scala/WhileLanguage.scala](https://github.com/scala-szeged/hrank-while-language/blob/master/src/main/scala/WhileLanguage.scala)
+The interpreter executes the aformentioned language. Please see the
+[src/main/WhileLanguage](https://github.com/scala-szeged/hrank-while-language/blob/master/src/main/WhileLanguage) folder.
